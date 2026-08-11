@@ -6,7 +6,8 @@ namespace Projects.Config.Db
         public static string Authors = "Authors";
         public static string Genres = "Genres";
         public static string BookShelfs = "BookShelfs";
-        public static string Todos = "Todos";
+        public static string Tasks = "Tasks";
+        public static string Project = "Project";
         public static string Refresh = "Token";
     }
 }

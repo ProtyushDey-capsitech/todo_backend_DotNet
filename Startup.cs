@@ -80,7 +80,8 @@ namespace Projects
             services.AddSingleton<PasswordService>();
             services.AddSingleton<TokenService>();
             //services.AddSingleton<BookShelfService>();
-            services.AddScoped<TodoService>();
+            services.AddScoped<TaskService>();
+            services.AddScoped<ProjectService>();
             services.AddScoped<RefreshTokenservice>();
 
             services.AddControllers().AddJsonOptions(options =>
