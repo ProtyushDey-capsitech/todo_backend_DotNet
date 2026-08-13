@@ -2,6 +2,7 @@
 using Capsitech.Extensions;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
+using Projects.Dtos.Common;
 using Projects.Dtos.Project;
 using Projects.Services;
 
@@ -38,13 +39,13 @@ namespace Projects.Controller
         }
 
         [HttpGet("GetAllProject")]
-        public async Task<ApiResponse<List<ResponseProjectData>>> GetallProject()
+        public async Task<ApiResponse<PaginatedResultDto<ResponseProjectData>>> GetallProject([FromQuery] PaginatedQueryDto dto)
         {
-            var response = new ApiResponse<List<ResponseProjectData>>();
+            var response = new ApiResponse<PaginatedResultDto<ResponseProjectData>>();
             try
             {
                 string userId = User.GetUserId();
-                List<ResponseProjectData> projects = await _projectService.GetAllProject(userId);
+                PaginatedResultDto<ResponseProjectData> projects = await _projectService.GetAllProject(userId,dto);
                 response.Result = projects;
                 response.Message = "Get All Projects";
             }
@@ -108,14 +109,15 @@ namespace Projects.Controller
             return response;
         }
 
-        [HttpDelete("DeleteTAsk")]
+        [HttpDelete("DeleteProject")]
         public async Task<ApiResponse<string>> DeleteTAsk(string projectId)
         {
             var response = new ApiResponse<string>();
             try
             {
                 string userid = User.GetUserId();
-                await _projectService.DeleteProject(userid, projectId);
+                await _projectService.DeleteProject( projectId,userid);
+                response.Result = userid;
                 response.Message = "Project Deleted Successfully";
             }
             catch (Exception ex)

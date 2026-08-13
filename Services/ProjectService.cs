@@ -1,7 +1,10 @@
-﻿using Microsoft.Extensions.Options;
+﻿using Microsoft.AspNetCore.Http.HttpResults;
+using Microsoft.AspNetCore.Mvc;
+using Microsoft.Extensions.Options;
 using MongoDB.Bson;
 using MongoDB.Driver;
 using Projects.Config.Db;
+using Projects.Dtos.Common;
 using Projects.Dtos.Project;
 using Projects.Dtos.Todo;
 using Projects.Models;
@@ -38,19 +41,39 @@ namespace Projects.Services
             return newProject.Id;
         }
 
-        public async Task<List<ResponseProjectData>> GetAllProject(string uerId)
+        public async Task<PaginatedResultDto<ResponseProjectData>> GetAllProject(string uerId, PaginatedQueryDto dto)
         {
+            int skip = (dto.Page - 1) * dto.PageSize;
             var filter = Builders<ProjectModel>.Filter.Eq(x => x.UserId, uerId);
-            var projects = await _project.Find(filter)
+            long total = await _project.CountDocumentsAsync(filter);
+            var projects = await _project.Aggregate()
+                .Match(filter)
+                .SortByDescending(x => x.CreatedAt)
+                .Skip(skip)
+                .Limit(dto.PageSize)
+                .Lookup<ProjectModel, TaskModel, ResponseProjectTaskDto>(
+                _taskModel,
+                x => x.Id,
+                x => x.ProjectId,
+                x => x.Tasks
+                )
                 .Project(x => new ResponseProjectData
                 {
                     Name = x.Name,
                     Desc = x.Desc,
                     Status = x.Status,
                     Id = x.Id,
+                    TaskCount = x.Tasks.Count()
                 })
                 .ToListAsync();
-            return projects;
+            var response = new PaginatedResultDto<ResponseProjectData>
+            {
+                Results = projects,
+                Total = total,
+                Page = dto.Page,
+                PageSize = dto.PageSize
+            };
+            return response;
 
         }
 
@@ -60,7 +83,7 @@ namespace Projects.Services
                 Builders<ProjectModel>.Filter.Eq(x => x.Id, PId));
             var existProject = await _project.Find(projectFilter).FirstOrDefaultAsync();
             if (existProject == null) throw new Exception("Project not fount");
-            var project =await _project.Aggregate()
+            var project = await _project.Aggregate()
                 .Match(projectFilter)
                 .Lookup<ProjectModel, TaskModel, ResponseProjectTaskDto>(
                     _taskModel,
@@ -112,18 +135,16 @@ namespace Projects.Services
                Builders<ProjectModel>.Filter.Eq(x => x.Id, pid),
                Builders<ProjectModel>.Filter.Eq(x => x.UserId, uid)
                );
-            var existProject = await _project.Find(filter).FirstOrDefaultAsync();
-            if (existProject == null) 
-                throw new Exception("project not found");
+            var existProject = await _project.Find(filter).FirstOrDefaultAsync() ?? throw new Exception("project not found");
             var update = Builders<ProjectModel>.Update
                 .Set(x => x.Status, !existProject?.Status);
-            if (existProject.Status)
+            if (existProject!.Status)
             {
                 await _project.UpdateOneAsync(filter, update);
             }
             else
             {
-                var Tasks = await _project.Aggregate()
+                var result = await _project.Aggregate()
                 .Match(filter)
                 .Lookup<ProjectModel, TaskModel, ResponseProjectTaskDto>(
                     _taskModel,
@@ -131,8 +152,28 @@ namespace Projects.Services
                     x => x.ProjectId,
                     x => x.Tasks
                 )
-               .Match(x => x.Tasks.Any(t => t.Status != "Completed")).ToListAsync();
-                if (Tasks.Count> 0) throw new Exception("Complete all tasks");
+               .Project(x => new ResponseProjectTaskDto
+               {
+                   Name = x.Name,
+                   Desc = x.Desc,
+                   Status = x.Status,
+                   Id = x.Id!.ToString(),
+                   Tasks = x.Tasks!.Select(t => new ResponseTaskData
+                   {
+                       Id = t.Id!.ToString(),
+                       Name = t.Name,
+                       Desc = t.Desc,
+                       Status = t.Status,
+                       Priority = t.Priority,
+                       CreatedAt = t.CreatedAt
+                   }).ToList(),
+               }).FirstOrDefaultAsync();
+
+                for(int i = 0; i < result.Tasks.Count(); i++)
+                {
+                    if (result.Tasks[i].Status != "Completed") throw new Exception("Please complete your Task");
+                }
+
                 await _project.UpdateOneAsync(filter, update);
             }
         }

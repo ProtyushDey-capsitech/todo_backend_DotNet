@@ -7,5 +7,6 @@ namespace Projects.Dtos.Project
     {
         [BsonRepresentation(BsonType.ObjectId)]
         public string? Id { get; set; }
+        public int TaskCount { get; set; }
     }
 }
