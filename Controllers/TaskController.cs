@@ -16,10 +16,10 @@ namespace Projects.Controllers
     [Route("api/[controller]")]
     public class TaskController : ControllerBase
     {
-        private readonly TaskService _todoService;
+        private readonly TaskService _taskService;
         public TaskController(TaskService todoService)
         {
-            _todoService = todoService;
+            _taskService = todoService;
         }
 
         //[HttpGet("getList")]
@@ -39,7 +39,7 @@ namespace Projects.Controllers
         public async Task<ApiResponse<string>> Create(UpdateTask dto, string projectId)
         {
             string userId = User.GetUserId();
-            string CreatedId = await _todoService.CreateAsync(dto, userId , projectId);
+            string CreatedId = await _taskService.CreateAsync(dto, userId , projectId);
             var response = new ApiResponse<string>()
             {
                 Result = CreatedId
@@ -48,15 +48,15 @@ namespace Projects.Controllers
             return (response);
         }
 
-        //[HttpPatch("UpdateWork")]
-        //public async Task<ApiResponse<string>> UpdateData(string id, UpdateTodo dto)
-        //{
-        //    string userId = User.GetUserId();
-        //    await _todoService.UpdateWorkAsync(id, dto , userId);
-        //    var response = new ApiResponse<string>();
-        //    response.Message = "Updated completely";
-        //    return (response);
-        //}
+        [HttpPatch("UpdateTask")]
+        public async Task<ApiResponse<string>> UpdateData(string id, string projectId,  UpdateTask dto)
+        {
+            string userId = User.GetUserId();
+            await _taskService.UpdateTaskAsync(id, dto, projectId, userId);
+            var response = new ApiResponse<string>();
+            response.Message = "Updated completely";
+            return (response);
+        }
         //[HttpPut("UpdateStatus")]
         //public async Task<ApiResponse<string>> UpdateStatus(string id)
         //{
@@ -74,22 +74,22 @@ namespace Projects.Controllers
         //    }
         //    return (response);
         //}
-        //[HttpDelete("Delete")]
-        //public async Task<ApiResponse<string>> DeleteTodo(string id)
-        //{
-        //    string userId = User.GetUserId();
-        //    var response = new ApiResponse<string>();
-        //    try
-        //    {
-        //        await _todoService.DeleteAsync(id , userId);
-        //        response.Message = "Deleted the task";
+        [HttpDelete("DeleteTask")]
+        public async Task<ApiResponse<string>> DeleteTodo(string id)
+        {
+            string userId = User.GetUserId();
+            var response = new ApiResponse<string>();
+            try
+            {
+                await _taskService.DeleteAsync(id);
+                response.Message = "Deleted the task";
 
-        //    }
-        //    catch (Exception e)
-        //    {
-        //        response.AddError(e);
-        //    }
-        //    return (response);
-        //}
+            }
+            catch (Exception e)
+            {
+                response.AddError(e);
+            }
+            return (response);
+        }
     }
 }

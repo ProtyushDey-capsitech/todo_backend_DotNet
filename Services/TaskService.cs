@@ -5,18 +5,19 @@ using Projects.Dtos.Common;
 using Projects.Dtos.Todo;
 using Projects.Models;
 using System.Net.Mime;
+using System.Security.Cryptography;
 
 namespace Projects.Services
 {
     public class TaskService
     {
-        private readonly IMongoCollection<TaskModel> _todo;
+        private readonly IMongoCollection<TaskModel> _task;
 
         public TaskService(IOptions<DbSettings> dbSettings)
         {
             var mongoClient = new MongoClient(dbSettings.Value.ConnectionString);
             var dataBase = mongoClient.GetDatabase(dbSettings.Value.DatabaseName);
-            _todo = dataBase.GetCollection<TaskModel>(DbCollections.Tasks);
+            _task = dataBase.GetCollection<TaskModel>(DbCollections.Tasks);
         }
 
         //public async Task<List<ResponseTodoData>> getAsync(string userId, PaginatedQueryDto dto)
@@ -45,15 +46,18 @@ namespace Projects.Services
                 Priority = dto.Priority,
                 CreatedAt = DateTime.UtcNow,
             };
-            await _todo.InsertOneAsync(newTask);
-            return newTask.Id;
+            await _task.InsertOneAsync(newTask);
+            return newTask.Id!;
         }
-        //public async Task UpdateWorkAsync(string id, UpdateTodo dto, string userid)
-        //{
-        //    var update = Builders<TodoModel>.Update.Set(x => x.Status, dto.Status).Set(x => x.Desc, dto.Desc);
-        //    var res = await _todo.UpdateOneAsync(x => x.Id == id && x.UserId == userid, update);
-        //    if (res.MatchedCount == 0) throw new Exception("task not found or Unauthorizd");
-        //}
+        public async Task UpdateTaskAsync (string id, UpdateTask dto, string pid, string uId)
+        {
+            var filter = Builders<TaskModel>.Filter.And(Builders<TaskModel>.Filter.Eq(x => x.UserId, uId),
+                Builders<TaskModel>.Filter.Eq(x => x.Id, id),
+                Builders<TaskModel>.Filter.Eq(x => x.ProjectId, pid));
+
+            var update = Builders<TaskModel>.Update.Set(x => x.Name, dto.Name).Set(x => x.Desc, dto.Desc).Set(x => x.Priority, dto.Priority);
+            await _task.UpdateOneAsync(filter, update);
+        }
 
         //public async Task UpdateAsync (string id, string userId)
         //{
@@ -63,11 +67,9 @@ namespace Projects.Services
         //    var update = Builders<TodoModel>.Update.Set(x=>x.IsDone, !a.IsDone);
         //    await _todo.UpdateOneAsync(x => x.Id == id, update);
         //}
-        //public async Task DeleteAsync(string id, string userId)
-        //{
-        //    TodoModel todo = await _todo.Find(x => x.Id == id).FirstOrDefaultAsync();
-        //    if (todo.UserId != userId) throw new Exception("unauthorize to delete");
-        //    await _todo.DeleteOneAsync(x => x.Id == id);
-        //}
+        public async Task DeleteAsync(string id)
+        {
+            await _task.DeleteOneAsync(ta => ta.Id==id);
+        }
     }
 }
