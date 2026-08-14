@@ -6,6 +6,7 @@ using MongoDB.Driver;
 using Projects.Config.Db;
 using Projects.Dtos.Common;
 using Projects.Dtos.Project;
+using Projects.Dtos.Task;
 using Projects.Dtos.Todo;
 using Projects.Models;
 using System.Runtime.CompilerServices;
@@ -77,12 +78,12 @@ namespace Projects.Services
 
         }
 
-        public async Task<ResponseProjectTaskDto> GetProject(string uerId, string PId)
+        public async Task<ResponseProjectTaskDto> GetProject(string uerId, string PId, TaskQueryDto dto)
         {
             var projectFilter = Builders<ProjectModel>.Filter.And(Builders<ProjectModel>.Filter.Eq(x => x.UserId, uerId),
                 Builders<ProjectModel>.Filter.Eq(x => x.Id, PId));
             var existProject = await _project.Find(projectFilter).FirstOrDefaultAsync();
-            if (existProject == null) throw new Exception("Project not fount");
+            if (existProject == null) throw new Exception("Project not found");
             var project = await _project.Aggregate()
                 .Match(projectFilter)
                 .Lookup<ProjectModel, TaskModel, ResponseProjectTaskDto>(
@@ -97,10 +98,11 @@ namespace Projects.Services
                     Name = x.Name,
                     Desc = x.Desc,
                     Status = x.Status,
-                    Id = x.Id.ToString(),
+                    Id = x.Id!.ToString(),
+                    TaskCount=x.Tasks!.Count(),
                     Tasks = x.Tasks!.Select(t => new ResponseTaskData
                     {
-                        Id = t.Id.ToString(),
+                        Id = t.Id!.ToString(),
                         Name = t.Name,
                         Desc = t.Desc,
                         Status = t.Status,
@@ -108,7 +110,7 @@ namespace Projects.Services
                         CreatedAt = t.CreatedAt
                     }).ToList(),
                 }).FirstOrDefaultAsync();
-
+            project.Tasks = FilterAndPaginateTasks(project.Tasks!, dto);
             return project;
 
         }
@@ -169,7 +171,7 @@ namespace Projects.Services
                    }).ToList(),
                }).FirstOrDefaultAsync();
 
-                for(int i = 0; i < result.Tasks.Count(); i++)
+                for (int i = 0; i < result.Tasks.Count(); i++)
                 {
                     if (result.Tasks[i].Status != "Completed") throw new Exception("Please complete your Task");
                 }
@@ -184,5 +186,47 @@ namespace Projects.Services
                Builders<ProjectModel>.Filter.Eq(x => x.Id, pId), Builders<ProjectModel>.Filter.Eq(x => x.UserId, uId));
             await _project.DeleteOneAsync(filter);
         }
+
+        private List<ResponseTaskData> FilterAndPaginateTasks(List<ResponseTaskData> tasks, TaskQueryDto dto)
+        {
+            var query = tasks.AsQueryable();
+
+            if (!string.IsNullOrWhiteSpace(dto.Search))
+            {
+                query = query.Where(x =>
+                    x.Name!.Contains(dto.Search, StringComparison.OrdinalIgnoreCase));
+            }
+
+            if (dto.Month.HasValue)
+            {
+                query = query.Where(x =>
+                    x.CreatedAt!.Value.Month == dto.Month.Value);
+            }
+
+            if (dto.Year.HasValue)
+            {
+                query = query.Where(x =>
+                    x.CreatedAt!.Value.Year == dto.Year.Value);
+            }
+
+            query = query.OrderByDescending(x => x.CreatedAt);
+
+            var skip = (dto.Page - 1) * dto.PageSize;
+
+            return query
+                .Skip(skip)
+                .Take(dto.PageSize)
+                .Select(t => new ResponseTaskData
+                {
+                    Id = t.Id!.ToString(),
+                    Name = t.Name,
+                    Desc = t.Desc,
+                    Status = t.Status,
+                    Priority = t.Priority,
+                    CreatedAt = t.CreatedAt
+                })
+                .ToList();
+        }
+
     }
 }

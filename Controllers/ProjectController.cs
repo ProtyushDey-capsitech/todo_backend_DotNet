@@ -4,6 +4,7 @@ using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Projects.Dtos.Common;
 using Projects.Dtos.Project;
+using Projects.Dtos.Task;
 using Projects.Services;
 
 namespace Projects.Controller
@@ -12,7 +13,7 @@ namespace Projects.Controller
     [Authorize(AuthenticationSchemes = "Bearer")]
 
     [Route("api/[controller]")]
-    public class ProjectController:ControllerBase
+    public class ProjectController : ControllerBase
     {
         private readonly ProjectService _projectService;
         public ProjectController(ProjectService projectService)
@@ -45,11 +46,11 @@ namespace Projects.Controller
             try
             {
                 string userId = User.GetUserId();
-                PaginatedResultDto<ResponseProjectData> projects = await _projectService.GetAllProject(userId,dto);
+                PaginatedResultDto<ResponseProjectData> projects = await _projectService.GetAllProject(userId, dto);
                 response.Result = projects;
                 response.Message = "Get All Projects";
             }
-            catch(Exception ex)
+            catch (Exception ex)
             {
                 response.AddError(ex.Message);
             }
@@ -57,13 +58,14 @@ namespace Projects.Controller
         }
 
         [HttpGet("GetProjectById")]
-        public async Task<ApiResponse<ResponseProjectTaskDto>> GetProjectById(string projectId)
+        public async Task<ApiResponse<ResponseProjectTaskDto>> GetProjectById(string projectId, [FromQuery] TaskQueryDto dto)
         {
             var response = new ApiResponse<ResponseProjectTaskDto>();
             try
             {
+                dto.PageSize = 5;
                 string userid = User.GetUserId();
-                var project =await _projectService.GetProject(userid, projectId);
+                var project = await _projectService.GetProject(userid, projectId, dto);
                 response.Result = project;
                 response.Message = "Get the project by id Successfully";
             }
@@ -75,17 +77,17 @@ namespace Projects.Controller
         }
 
         [HttpPatch("UpdateProject")]
-        public async Task<ApiResponse<string>> UpdateProject(ProjectDto dto ,string projectId)
+        public async Task<ApiResponse<string>> UpdateProject(ProjectDto dto, string projectId)
         {
             var response = new ApiResponse<string>();
             try
             {
-            string userid = User.GetUserId();
+                string userid = User.GetUserId();
                 if (dto.Desc == "" && dto.Name == "") throw new Exception("Fill min one data to update");
                 await _projectService.UpdateProject(userid, projectId, dto);
                 response.Message = "Project Updated Successfully";
             }
-            catch(Exception ex)
+            catch (Exception ex)
             {
                 response.AddError(ex.Message);
             }
@@ -93,7 +95,7 @@ namespace Projects.Controller
         }
 
         [HttpPatch("UpdateProjectStatus")]
-        public async Task<ApiResponse<string>> UpdateProjectStatus( string projectId)
+        public async Task<ApiResponse<string>> UpdateProjectStatus(string projectId)
         {
             var response = new ApiResponse<string>();
             try
@@ -116,7 +118,7 @@ namespace Projects.Controller
             try
             {
                 string userid = User.GetUserId();
-                await _projectService.DeleteProject( projectId,userid);
+                await _projectService.DeleteProject(projectId, userid);
                 response.Result = userid;
                 response.Message = "Project Deleted Successfully";
             }

@@ -59,14 +59,14 @@ namespace Projects.Services
             await _task.UpdateOneAsync(filter, update);
         }
 
-        //public async Task UpdateAsync (string id, string userId)
-        //{
-        //    var a = await _todo.Find(x => x.Id == id).FirstOrDefaultAsync();
-        //    if(a==null) throw new Exception("task not found");
-        //    if (a.UserId != userId) throw new Exception("unauthorize to edit");
-        //    var update = Builders<TodoModel>.Update.Set(x=>x.IsDone, !a.IsDone);
-        //    await _todo.UpdateOneAsync(x => x.Id == id, update);
-        //}
+        public async Task UpdateAsync(string id, string userId ,string status)
+        {
+            var a = await _task.Find(x => x.Id == id).FirstOrDefaultAsync();
+            if (a == null) throw new Exception("task not found");
+            if (a.UserId != userId) throw new Exception("unauthorize to edit");
+            var update = Builders<TaskModel>.Update.Set(x => x.Status, status);
+            await _task.UpdateOneAsync(x => x.Id == id, update);
+        }
         public async Task DeleteAsync(string id)
         {
             await _task.DeleteOneAsync(ta => ta.Id==id);

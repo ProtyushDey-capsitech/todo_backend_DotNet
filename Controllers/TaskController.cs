@@ -12,7 +12,7 @@ namespace Projects.Controllers
 {
     [ApiController]
     [Authorize(AuthenticationSchemes = "Bearer")]
-    
+
     [Route("api/[controller]")]
     public class TaskController : ControllerBase
     {
@@ -39,7 +39,7 @@ namespace Projects.Controllers
         public async Task<ApiResponse<string>> Create(UpdateTask dto, string projectId)
         {
             string userId = User.GetUserId();
-            string CreatedId = await _taskService.CreateAsync(dto, userId , projectId);
+            string CreatedId = await _taskService.CreateAsync(dto, userId, projectId);
             var response = new ApiResponse<string>()
             {
                 Result = CreatedId
@@ -49,7 +49,7 @@ namespace Projects.Controllers
         }
 
         [HttpPatch("UpdateTask")]
-        public async Task<ApiResponse<string>> UpdateData(string id, string projectId,  UpdateTask dto)
+        public async Task<ApiResponse<string>> UpdateData(string id, string projectId, UpdateTask dto)
         {
             string userId = User.GetUserId();
             await _taskService.UpdateTaskAsync(id, dto, projectId, userId);
@@ -57,23 +57,23 @@ namespace Projects.Controllers
             response.Message = "Updated completely";
             return (response);
         }
-        //[HttpPut("UpdateStatus")]
-        //public async Task<ApiResponse<string>> UpdateStatus(string id)
-        //{
-        //    string userId = User.GetUserId();
-        //    var response = new ApiResponse<string>();
-        //    try
-        //    {
-        //        await _todoService.UpdateAsync(id, userId);
-        //        response.Message = "Updated the task status ";
+        [HttpPatch("UpdateStatus")]
+        public async Task<ApiResponse<string>> UpdateStatus(string id, string status)
+        {
+            string userId = User.GetUserId();
+            var response = new ApiResponse<string>();
+            try
+            {
+                await _taskService.UpdateAsync(id, userId, status);
+                response.Message = "Updated the task status ";
 
-        //    }
-        //    catch (Exception e)
-        //    {
-        //        response.AddError(e);
-        //    }
-        //    return (response);
-        //}
+            }
+            catch (Exception e)
+            {
+                response.AddError(e);
+            }
+            return (response);
+        }
         [HttpDelete("DeleteTask")]
         public async Task<ApiResponse<string>> DeleteTodo(string id)
         {
