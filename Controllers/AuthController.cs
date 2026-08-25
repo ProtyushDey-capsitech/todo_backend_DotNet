@@ -4,18 +4,20 @@ using Capsitech.Data.MongoDB;
 using Capsitech.Extensions;
 using Capsitech.Storage;
 using Capsitech.Utility;
-using Projects.Common;
-using Projects.Identity;
-using Projects.Models;
-using Projects.Services;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Mvc.Razor;
 using MongoDB.Bson;
 using MongoDB.Driver;
-using System.Security.Claims;
+using Projects.Common;
 using Projects.Dtos;
+using Projects.Dtos.Auth;
+using Projects.Identity;
+using Projects.Models;
+using Projects.Services;
+using System.Diagnostics.CodeAnalysis;
+using System.Security.Claims;
 
 namespace Projects.Controllers
 {
@@ -25,17 +27,19 @@ namespace Projects.Controllers
         private readonly ILogger<AuthController> _logger;
         private readonly UserManager<ApplicationUser> _userManager;
         private readonly SignInManager<ApplicationUser> _signInManager;
-        private readonly IEmailSender _emailSender;
+        //private readonly IEmailSender _emailSender;
         private readonly RefreshTokenservice _refreshTokenService;
+        private readonly OtpService _otp;
 
         public AuthController(ILogger<AuthController> logger, IEmailSender emailSender, UserManager<ApplicationUser> userManager,
-          SignInManager<ApplicationUser> signInManager, DBConfiguration dbConfig, RefreshTokenservice refreshTokenService) : base(dbConfig)
+          SignInManager<ApplicationUser> signInManager, DBConfiguration dbConfig, RefreshTokenservice refreshTokenService, OtpService otpService) : base(dbConfig)
         {
             _logger = logger;
             _userManager = userManager;
             _signInManager = signInManager;
-            _emailSender = emailSender;
+            //_emailSender = emailSender;
             _refreshTokenService = refreshTokenService;
+            _otp = otpService;
             //_blobClient = blobClient;
             //_azureBlobClient = azureBlobClient;
         }
@@ -116,65 +120,22 @@ namespace Projects.Controllers
         [HttpPost("Login")]
         [AllowAnonymous]
         [RequireHttps]
-        public async Task<ApiResponse<UserLogInResponse>> Login([FromBody] UserLogInRequest model)
+        public async Task<ApiResponse<String>> Login([FromBody] UserLogInRequest model)
         {
-            ApiResponse<UserLogInResponse> response = new ApiResponse<UserLogInResponse>();
+            ApiResponse<String> response = new ApiResponse<String>();
             try
             {
                 if (ValidateModel(response))
                 {
                     ApplicationUser user = await _userManager.FindByNameAsync(model.UserName);
-                    if (user != null && user.Status == ApplicationUserStatus.Active) //&& !isClient 
+                    if (user != null && user.Status == ApplicationUserStatus.Active) 
                     {
-
-                        // This doesn't count login failures towards account lockout
-                        // To enable password failures to trigger account lockout, set lockoutOnFailure: true
                         Microsoft.AspNetCore.Identity.SignInResult result = await _signInManager.CheckPasswordSignInAsync(user, model.Password, false);
-                        //result = await _signInManager.PasswordSignInAsync(user, model.Password, false, false);
                         if (result.Succeeded)
                         {
-                            //if (user.RoleType == RoleTypes.student)
-                            //{
-                            //    throw new AppModelException("User not allowed to sign-in");
-                            //}
-                            TokenDto token = ((ApplicationSignInManager)_signInManager).GenerateJwtTokens(user);
-
-                            Response.Cookies.Append(
-                                "I_Refresh",
-                                token.RefreshToken,
-                                new CookieOptions
-                                {
-                                    HttpOnly = true,
-                                    Secure = true,
-                                    Expires = DateTimeOffset.UtcNow.AddMinutes(15),
-                                    SameSite = SameSiteMode.None,
-                                }
-                                );
-                            response.Result = new UserLogInResponse
-                            {
-                                Name = user.Name.ToString(),
-                                Token = token.AccessToken,
-                                TokenExpiry = 15,
-                                Id = user.Id,
-                                Email = user.Email,
-                                UserName = user.UserName,
-                                Role = user.Role,
-                                Roles = user.Roles,
-                                RoleType = user.RoleType,
-                                IsDefaultPassword = user.IsDefaultPassword,
-                            };
-
-                            if (user.UserImage != null)
-                            {
-                                response.Result.UserImage = user.UserImage;
-                            }
-
-                            string ip = GetIpAddress(), agent = GetUserAgent();
-                            await new ApplicationUserDB(_dbConfig).RecordLoginDetail(user, ip, agent);
-
-                            await _refreshTokenService.createToken(token.RefreshToken, user.Id, ip);
-
-                            _logger.LogDebug($"User '{user.UserName}' token generated");
+                           string sessionId =await _otp.GenerateOtpAsync(user.Id, user.Email);
+                            response.Result = sessionId;
+                            response.Message = "now verify otp";
                         }
                         else
                         {
@@ -205,6 +166,124 @@ namespace Projects.Controllers
                 _logger.LogError(ex, "Error while sign-in");
                 response.AddError(ex);
             }
+            return response;
+        }
+
+        #endregion
+
+        #region verify otp
+        /// <summary>
+        /// Get user's access token
+        /// </summary>
+        /// <param name="model">Login model</param>
+        /// <returns><see cref="ApiResponse{UserLogInResponse}"/></returns>
+        [HttpPost("VerifyOtp")]
+        [AllowAnonymous]
+        [RequireHttps]
+        public async Task<ApiResponse<UserLogInResponse>> VerifyOtp([FromBody] VerifyOtpRequest model)
+        {
+            ApiResponse<UserLogInResponse> response = new ApiResponse<UserLogInResponse>();
+
+            try
+            {
+                if (ValidateModel(response))
+                {
+                    string userid = await _otp.VerifyOtpAsync(
+                        model.sessionId,
+                        model.Otp
+                    );
+
+                    if (userid == null) throw new AppModelException("Invalid or expired OTP");
+
+                    // OTP is valid → get user
+                    ApplicationUser user =
+                        await _userManager.FindByIdAsync(userid);
+
+                    if (user == null)
+                    {
+                        throw new AppModelException("User not found");
+                    }
+
+                    if (user.Status != ApplicationUserStatus.Active)
+                    {
+                        throw new AppModelException("Inactive User");
+                    }
+
+                    // Generate JWT
+                    TokenDto token =
+                        ((ApplicationSignInManager)_signInManager)
+                        .GenerateJwtTokens(user);
+
+
+                    // Refresh token cookie
+                    Response.Cookies.Append(
+                        "I_Refresh",
+                        token.RefreshToken,
+                        new CookieOptions
+                        {
+                            HttpOnly = true,
+                            Secure = true,
+                            Expires = DateTimeOffset.UtcNow.AddMinutes(15),
+                            SameSite = SameSiteMode.None
+                        }
+                    );
+
+
+                    response.Result = new UserLogInResponse
+                    {
+                        Name = user.Name.ToString(),
+                        Token = token.AccessToken,
+                        TokenExpiry = 15,
+                        Id = user.Id,
+                        Email = user.Email,
+                        UserName = user.UserName,
+                        Role = user.Role,
+                        Roles = user.Roles,
+                        RoleType = user.RoleType,
+                        IsDefaultPassword = user.IsDefaultPassword
+                    };
+
+
+                    if (user.UserImage != null)
+                    {
+                        response.Result.UserImage = user.UserImage;
+                    }
+
+
+                    // Login information
+                    string ip = GetIpAddress();
+                    string agent = GetUserAgent();
+
+                    await new ApplicationUserDB(_dbConfig)
+                        .RecordLoginDetail(user, ip, agent);
+
+
+                    await _refreshTokenService.CreateToken(
+                        token.RefreshToken,
+                        user.Id,
+                        ip
+                    );
+
+
+                    _logger.LogDebug(
+                        $"User '{user.UserName}' OTP verified and token generated"
+                    );
+                }
+            }
+            catch (AppModelException ex)
+            {
+                response.AddError(ex);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(
+                    ex,
+                    "Error while verifying OTP"
+                );
+
+                response.AddError(ex);
+            }
+
             return response;
         }
 
@@ -761,27 +840,7 @@ namespace Projects.Controllers
         }
         #endregion
 
-
-        [HttpGet("me")]
-        [Authorize(AuthenticationSchemes = "Bearer")]
-        public async Task<ApiResponse<string>> Me()
-        {
-            ApiResponse<string> response = new ApiResponse<string>();
-            try
-            {
-                string userId = User.GetUserId();
-                var user = await _userManager.FindByIdAsync(userId);
-                if (user == null) throw new UnauthorizedAccessException("unauthorized");
-                response.Result = "Authenticated";
-                response.Message = "Authenticated";
-                return response;
-            }
-            catch (Exception e)
-            {
-                response.AddError(e.Message);
-            }
-            return response;
-        }
+        #region logout
         [HttpPost("Logout")]
         public async Task<ApiResponse<string>> Logout()
         {
@@ -804,6 +863,9 @@ namespace Projects.Controllers
             return response;
         }
 
+        #endregion
+
+        #region refresh token
         [HttpGet("Refresh")]
         public async Task<ApiResponse<UserLogInResponse>> RefreshAccess()
         {
@@ -816,6 +878,7 @@ namespace Projects.Controllers
                 if (cheakUser == "") throw new Exception("Please login");
 
                 ApplicationUser user = await _userManager.FindByIdAsync(cheakUser) ?? throw new Exception("user Not found");
+                await _refreshTokenService.Invoketoken(cookie, ip);
                 TokenDto token = ((ApplicationSignInManager)_signInManager).GenerateJwtTokens(user);
 
                 Response.Cookies.Append(
@@ -842,9 +905,9 @@ namespace Projects.Controllers
                     RoleType = user.RoleType,
                     IsDefaultPassword = user.IsDefaultPassword,
                 };
-                await _refreshTokenService.createToken(token.RefreshToken, user.Id, ip);
+                await _refreshTokenService.CreateToken(token.RefreshToken, user.Id, ip);
             }
-            catch(Exception e)
+            catch (Exception e)
             {
                 response.AddError(e.Message);
             }
@@ -852,3 +915,5 @@ namespace Projects.Controllers
         }
     }
 }
+
+#endregion

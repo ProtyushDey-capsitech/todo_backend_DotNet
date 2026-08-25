@@ -297,7 +297,7 @@ Message:<br />{messsage}");
     public class SendGridSettings
     {
         public string ApiKey { get; set; }
-        public string SenderEmail { get; set; } = "noreply@emails.capsitech.com";
+        public string SenderEmail { get; set; } = "protyushdeycapsitech@gmail.com";
         public string SenderName { get; set; } = "Capsitech";
         public EmailAddress GetSender(string senderName = null)//bool isForTCF)
         {
