@@ -13,6 +13,7 @@ namespace Projects.Models
         public string? UserId { get; set; }
         public string? Ip { get; set; }
         public DateTime ValidTime { get; set; } = DateTime.UtcNow;
+        public bool IsExpired { get; set; } = false; 
         public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
 
         public DateTime? UpdatedAt { get; set; } = DateTime.UtcNow;

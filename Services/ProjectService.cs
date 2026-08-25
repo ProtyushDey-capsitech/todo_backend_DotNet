@@ -1,4 +1,5 @@
-﻿using Microsoft.AspNetCore.Http.HttpResults;
+﻿using Capsitech.Services;
+using Microsoft.AspNetCore.Http.HttpResults;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.Extensions.Options;
 using MongoDB.Bson;
@@ -38,7 +39,9 @@ namespace Projects.Services
                 Status = false,
                 CreatedAt = DateTime.UtcNow,
             };
+
             await _project.InsertOneAsync(newProject);
+
             return newProject.Id;
         }
 

@@ -75,6 +75,8 @@ namespace Projects
 
             //services.AddSingleton<BookService>();
             services.AddSingleton<AuthorService>();
+            services.AddScoped<OtpService>();
+
             //services.AddSingleton<GenreService>();
             services.AddScoped<AccountService>();
             services.AddSingleton<PasswordService>();
@@ -83,6 +85,7 @@ namespace Projects
             services.AddScoped<TaskService>();
             services.AddScoped<ProjectService>();
             services.AddScoped<RefreshTokenservice>();
+
 
             services.AddControllers().AddJsonOptions(options =>
                 options.JsonSerializerOptions.PropertyNamingPolicy = JsonNamingPolicy.CamelCase

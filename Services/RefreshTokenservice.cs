@@ -2,6 +2,7 @@
 using MongoDB.Driver;
 using Projects.Config.Db;
 using Projects.Models;
+using System.Security.Cryptography;
 
 namespace Projects.Services
 {
@@ -24,6 +25,7 @@ namespace Projects.Services
                 .Find(x =>
                     x.Token == token &&
                     x.Ip == ip &&
+                    x.IsExpired == false &&
                     x.ValidTime > DateTime.UtcNow)
                 .FirstOrDefaultAsync();
 
@@ -31,7 +33,7 @@ namespace Projects.Services
 
             return existToken.UserId;
         }
-        public async Task createToken(string token, string userId, string ip)
+        public async Task CreateToken(string token, string userId, string ip)
         {
             var nweRefreshToken = new RefreshToken
             {
@@ -42,6 +44,15 @@ namespace Projects.Services
                 ValidTime = DateTime.UtcNow.AddDays(5)
             };
             await _refreshCollection.InsertOneAsync(nweRefreshToken);
+        }
+
+        public async Task Invoketoken(string token, string ip)
+        {
+            var filter = Builders<RefreshToken>.Filter.And(Builders<RefreshToken>.Filter.Eq(x => x.Token, token),
+    Builders<RefreshToken>.Filter.Eq(x => x.Ip, ip));
+
+            var update = Builders<RefreshToken>.Update.Set(x => x.IsExpired, true);
+            await _refreshCollection.UpdateOneAsync(filter, update);
         }
 
     }
