@@ -223,7 +223,7 @@ namespace Projects.Controllers
                         {
                             HttpOnly = true,
                             Secure = true,
-                            Expires = DateTimeOffset.UtcNow.AddMinutes(15),
+                            Expires = DateTimeOffset.UtcNow.AddDays(15),
                             SameSite = SameSiteMode.None
                         }
                     );

@@ -6,6 +6,7 @@ using Projects.Dtos.Common;
 using Projects.Dtos.Project;
 using Projects.Dtos.Task;
 using Projects.Services;
+using System.Collections.Generic;
 
 namespace Projects.Controller
 {
@@ -40,7 +41,7 @@ namespace Projects.Controller
         }
 
         [HttpGet("GetAllProject")]
-        public async Task<ApiResponse<PaginatedResultDto<ResponseProjectData>>> GetallProject([FromQuery] PaginatedQueryDto dto)
+        public async Task<ApiResponse<PaginatedResultDto<ResponseProjectData>>> GetallProject([FromQuery] ProjectPaginatedQueryDto dto)
         {
             var response = new ApiResponse<PaginatedResultDto<ResponseProjectData>>();
             try
@@ -49,6 +50,24 @@ namespace Projects.Controller
                 PaginatedResultDto<ResponseProjectData> projects = await _projectService.GetAllProject(userId, dto);
                 response.Result = projects;
                 response.Message = "Get All Projects";
+            }
+            catch (Exception ex)
+            {
+                response.AddError(ex.Message);
+            }
+            return response;
+        }
+
+        [HttpGet("GetAllProjectName")]
+        public async Task<ApiResponse<List<ProjectNameDto>>> GetAllProjectName()
+        {
+            var response = new ApiResponse<List<ProjectNameDto>>();
+            try
+            {
+                string userId = User.GetUserId();
+                List< ProjectNameDto> projects = await _projectService.GetAllProjectName(userId);
+                response.Result = projects;
+                response.Message = "Get All Project names";
             }
             catch (Exception ex)
             {

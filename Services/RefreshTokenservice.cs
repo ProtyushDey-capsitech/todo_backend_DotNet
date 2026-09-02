@@ -25,11 +25,11 @@ namespace Projects.Services
                 .Find(x =>
                     x.Token == token &&
                     x.Ip == ip &&
-                    x.IsExpired == false &&
+                    //x.IsExpired == false &&
                     x.ValidTime > DateTime.UtcNow)
                 .FirstOrDefaultAsync();
 
-            if (existToken == null) throw new Exception("user not found");
+            if (existToken == null) throw new Exception("Token not found");
 
             return existToken.UserId;
         }
@@ -41,7 +41,7 @@ namespace Projects.Services
                 Ip = ip,
                 UserId = userId,
                 CreatedAt = DateTime.UtcNow,
-                ValidTime = DateTime.UtcNow.AddDays(5)
+                ValidTime = DateTime.UtcNow.AddDays(15)
             };
             await _refreshCollection.InsertOneAsync(nweRefreshToken);
         }

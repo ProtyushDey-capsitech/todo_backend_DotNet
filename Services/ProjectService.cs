@@ -1,4 +1,5 @@
-﻿using Capsitech.Services;
+﻿using Azure.Storage.Blobs.Specialized;
+using Capsitech.Services;
 using Microsoft.AspNetCore.Http.HttpResults;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.Extensions.Options;
@@ -17,14 +18,14 @@ namespace Projects.Services
     public class ProjectService
     {
         private readonly IMongoCollection<ProjectModel> _project;
-        private readonly IMongoCollection<TaskModel> _taskModel;
+        private readonly IMongoCollection<TaskModel> _task;
 
         public ProjectService(IOptions<DbSettings> dbsettings)
         {
             var mongoclient = new MongoClient(dbsettings.Value.ConnectionString);
             var dataBase = mongoclient.GetDatabase(dbsettings.Value.DatabaseName);
             _project = dataBase.GetCollection<ProjectModel>(DbCollections.Project);
-            _taskModel = dataBase.GetCollection<TaskModel>(DbCollections.Tasks);
+            _task = dataBase.GetCollection<TaskModel>(DbCollections.Tasks);
         }
 
         public async Task<string> CreateProject(ProjectDto dto, string userId)
@@ -45,10 +46,25 @@ namespace Projects.Services
             return newProject.Id;
         }
 
-        public async Task<PaginatedResultDto<ResponseProjectData>> GetAllProject(string uerId, PaginatedQueryDto dto)
+        public async Task<PaginatedResultDto<ResponseProjectData>> GetAllProject(string uerId, ProjectPaginatedQueryDto dto)
         {
             int skip = (dto.Page - 1) * dto.PageSize;
             var filter = Builders<ProjectModel>.Filter.Eq(x => x.UserId, uerId);
+
+            if (!string.IsNullOrEmpty(dto.Search))
+            {
+                filter &= Builders<ProjectModel>.Filter.Regex(
+                        x => x.Name,
+                       new BsonRegularExpression(dto.Search)
+                );
+            }
+
+            if (!string.IsNullOrEmpty(dto.Status))
+            {
+                bool status = bool.Parse(dto.Status);
+
+                filter &= Builders<ProjectModel>.Filter.Eq(x => x.Status, status);
+            }
             long total = await _project.CountDocumentsAsync(filter);
             var projects = await _project.Aggregate()
                 .Match(filter)
@@ -56,7 +72,7 @@ namespace Projects.Services
                 .Skip(skip)
                 .Limit(dto.PageSize)
                 .Lookup<ProjectModel, TaskModel, ResponseProjectTaskDto>(
-                _taskModel,
+                _task,
                 x => x.Id,
                 x => x.ProjectId,
                 x => x.Tasks
@@ -81,6 +97,21 @@ namespace Projects.Services
 
         }
 
+        public async Task<List<ProjectNameDto>> GetAllProjectName(string uerId)
+        {
+            var filter = Builders<ProjectModel>.Filter.Eq(x => x.UserId, uerId);
+
+            var response = await _project.Find(filter)
+                .Project(x => new ProjectNameDto
+                {
+                    name = x.Name,
+                    Id = x.Id
+                })
+                .ToListAsync();
+            return response;
+
+        }
+
         public async Task<ResponseProjectTaskDto> GetProject(string uerId, string PId, TaskQueryDto dto)
         {
             var projectFilter = Builders<ProjectModel>.Filter.And(Builders<ProjectModel>.Filter.Eq(x => x.UserId, uerId),
@@ -90,7 +121,7 @@ namespace Projects.Services
             var project = await _project.Aggregate()
                 .Match(projectFilter)
                 .Lookup<ProjectModel, TaskModel, ResponseProjectTaskDto>(
-                    _taskModel,
+                    _task,
                     x => x.Id,
                     x => x.ProjectId,
                     x => x.Tasks
@@ -102,7 +133,7 @@ namespace Projects.Services
                     Desc = x.Desc,
                     Status = x.Status,
                     Id = x.Id!.ToString(),
-                    TaskCount=x.Tasks!.Count(),
+                    TaskCount = x.Tasks!.Count(),
                     Tasks = x.Tasks!.Select(t => new ResponseTaskData
                     {
                         Id = t.Id!.ToString(),
@@ -152,7 +183,7 @@ namespace Projects.Services
                 var result = await _project.Aggregate()
                 .Match(filter)
                 .Lookup<ProjectModel, TaskModel, ResponseProjectTaskDto>(
-                    _taskModel,
+                    _task,
                     x => x.Id,
                     x => x.ProjectId,
                     x => x.Tasks
@@ -188,6 +219,50 @@ namespace Projects.Services
             var filter = Builders<ProjectModel>.Filter.And(
                Builders<ProjectModel>.Filter.Eq(x => x.Id, pId), Builders<ProjectModel>.Filter.Eq(x => x.UserId, uId));
             await _project.DeleteOneAsync(filter);
+        }
+
+        public async Task<List<ProjectTaskStatusCount>> GetProjectTaskCount(string userId)
+        {
+            var res = await _project.Aggregate()
+                .Match(x => x.UserId == userId)
+                .Lookup<ProjectModel, TaskModel, ResponseProjectTaskDto>(
+                _task,
+                x => x.Id,
+                x => x.ProjectId,
+                x => x.Tasks)
+                .Unwind(x => x.Tasks)
+                .As<projectTaskunwind>()
+                .Group(
+                x => new
+                {
+                    x.Id,
+                    x.Name,
+                    x.Tasks.Status
+                },
+                g => new
+                {
+                    Id = g.Key.Id,
+                    Name = g.Key.Name,
+                    Status = g.Key.Status,
+                    Count = g.Count()
+                })
+                .Group(
+                x => new
+                {
+                    x.Name,
+                    x.Id,
+                },
+                g => new ProjectTaskStatusCount
+                {
+                    name = g.Key.Name,
+                    count = g.Select(x => new ResponseStatusCount
+                    {
+                        Status = x.Status,
+                        count = x.Count
+                    }).ToList()
+                })
+    .ToListAsync();
+            return res;
         }
 
         private List<ResponseTaskData> FilterAndPaginateTasks(List<ResponseTaskData> tasks, TaskQueryDto dto)
@@ -230,6 +305,5 @@ namespace Projects.Services
                 })
                 .ToList();
         }
-
     }
 }

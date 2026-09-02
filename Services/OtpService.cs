@@ -40,9 +40,10 @@ namespace Projects.Services
 
 
             // Generate OTP
-            string otp = RandomNumberGenerator
-                .GetInt32(100000, 1000000)
-                .ToString();
+            //string otp = RandomNumberGenerator
+            //    .GetInt32(100000, 1000000)
+            //    .ToString();
+            string otp = "000000";
 
 
             // Generate temporary session
@@ -52,7 +53,7 @@ namespace Projects.Services
 
 
             string otpHash = HashOtp(otp);
-
+            Console.WriteLine(otp);
 
             var otpModel = new OtpModel
             {
