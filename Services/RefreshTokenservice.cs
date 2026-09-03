@@ -24,7 +24,7 @@ namespace Projects.Services
             var existToken = await _refreshCollection
                 .Find(x =>
                     x.Token == token &&
-                    x.Ip == ip &&
+                    //x.Ip == ip &&
                     //x.IsExpired == false &&
                     x.ValidTime > DateTime.UtcNow)
                 .FirstOrDefaultAsync();

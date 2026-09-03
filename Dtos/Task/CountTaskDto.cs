@@ -8,7 +8,6 @@
         public long InprogressTask { get; set; } = 0;
 
         //public int DoneTask { get; set; } = 0;
-        public long TotalProject { get; set; } = 0;
 
         //public int DoneTask { get; set; } = 0;
 

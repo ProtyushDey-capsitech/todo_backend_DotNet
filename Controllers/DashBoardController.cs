@@ -27,13 +27,20 @@ namespace Projects.Controllers
         }
 
         [HttpGet("CountTask")]
-        public async Task<ApiResponse<CountTaskDto>> CountTask()
+        public async Task<ApiResponse<CountTaskProjectDto>> CountTask()
         {
             string userId = User.GetUserId();
             CountTaskDto data = await _taskService.CountTask(userId);
-            var response = new ApiResponse<CountTaskDto>()
+            long proCount = await _projectService.CountProject(userId);
+            var response = new ApiResponse<CountTaskProjectDto>()
             {
-                Result = data
+                Result = new()
+                {
+                    TotalTask = data.TotalTask,
+                    InprogressTask = data.InprogressTask,
+                    TodoTask = data.TodoTask,
+                    TotalProject = proCount
+                }
             };
             response.Message = "Get count from data";
             return response;

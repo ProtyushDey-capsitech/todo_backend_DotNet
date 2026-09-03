@@ -136,23 +136,10 @@ namespace Projects.Services
                 name: "InprogressTask",
                 pipeline: InprogressTaskPipeline);
 
-            //var TotalProjectPipeline = new EmptyPipelineDefinition<TaskModel>()
-            //    .Lookup<string, ProjectModel, TaskLookupProject>(
-            //    _project,
-            //    x => userId,
-            //    x => x.UserId,
-            //    x => x.project
-            //    )
-            //    .Unwind(x=>x.project).Count();
-            //var TotalProjectFacet = AggregateFacet.Create(
-            //    name: "TotalProject",
-            //    pipeline: TotalProjectPipeline);
-
 
             var result = await _task.Aggregate()
                 .Match(filter)
                 .Facet(TotalTaskFacet, TodoTaskFacet, InprogressTaskFacet
-                //TotalProjectFacet
                 )
                 .FirstOrDefaultAsync();
 
@@ -173,11 +160,6 @@ namespace Projects.Services
                 .First(x => x.Name == "InprogressTask")
                 .Output<AggregateCountResult>()
                 .FirstOrDefault()?.Count ?? 0,
-                TotalProject=4
-                //TotalProject = result.Facets
-                //.First(x => x.Name == "TotalProject")
-                //.Output<AggregateCountResult>()
-                //.FirstOrDefault()?.Count ?? 0
             };
         }
 

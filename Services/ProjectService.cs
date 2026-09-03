@@ -151,8 +151,7 @@ namespace Projects.Services
 
         public async Task UpdateProject(string uId, string pid, ProjectDto dto)
         {
-            var filter = Builders<ProjectModel>.Filter.Eq(x => x.UserId, uId);
-            var allFilters = Builders<ProjectModel>.Filter.And(filter, Builders<ProjectModel>.Filter.Eq(x => x.Id, pid));
+            var filter = Builders<ProjectModel>.Filter.And(Builders<ProjectModel>.Filter.Eq(x => x.UserId, uId), Builders<ProjectModel>.Filter.Eq(x => x.Id, pid));
             var update = new List<UpdateDefinition<ProjectModel>>();
             if (dto.Desc != "") update.Add(Builders<ProjectModel>.Update.Set(x => x.Desc, dto.Desc));
             if (dto.Name != "")
@@ -219,6 +218,12 @@ namespace Projects.Services
             var filter = Builders<ProjectModel>.Filter.And(
                Builders<ProjectModel>.Filter.Eq(x => x.Id, pId), Builders<ProjectModel>.Filter.Eq(x => x.UserId, uId));
             await _project.DeleteOneAsync(filter);
+        }
+
+        public async Task<long> CountProject(String uId)
+        {
+            var count = await _project.CountAsync(x => x.UserId == uId);
+            return count;
         }
 
         public async Task<List<ProjectTaskStatusCount>> GetProjectTaskCount(string userId)

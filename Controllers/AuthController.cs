@@ -865,6 +865,35 @@ namespace Projects.Controllers
 
         #endregion
 
+        #region me
+
+        [HttpGet("me")]
+        [Authorize(AuthenticationSchemes = "Bearer")]
+        public async Task<ApiResponse<UserDataDto>> Me()
+        {
+            ApiResponse<UserDataDto> response = new ApiResponse<UserDataDto>();
+            try
+            {
+                string userId = User.GetUserId();
+                var user = await _userManager.FindByIdAsync(userId);
+                if (user == null) throw new UnauthorizedAccessException("unauthorized");
+                response.Result = new UserDataDto
+                {
+                    Name = user.Name.ToString() ,
+                    Email = user.Email,
+                    Id = user.Id,
+                };
+                response.Message = "Authenticated";
+                return response;
+            }
+            catch (Exception e)
+            {
+                response.AddError(e.Message);
+            }
+            return response;
+        }
+        #endregion
+
         #region refresh token
         [HttpGet("Refresh")]
         public async Task<ApiResponse<UserLogInResponse>> RefreshAccess()
