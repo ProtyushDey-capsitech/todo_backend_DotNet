@@ -146,9 +146,10 @@ namespace Projects
             if (env.IsDevelopment())
             {
                 app.UseSwagger();
+
                 app.UseSwaggerUI(c =>
                 {
-                    c.DocExpansion(DocExpansion.None); // set default close all the tabs and sections
+                    c.DocExpansion(DocExpansion.None);
                 });
             }
 
@@ -157,29 +158,26 @@ namespace Projects
                 context.Response.Headers.Append("X-Content-Type-Options", "nosniff");
                 context.Response.Headers.Append("X-Frame-Options", "DENY");
                 context.Response.Headers.Append("X-XSS-Protection", "0");
-                context.Response.Headers.Append("Referrer-Policy", "strict-origin-when-cross-origin");
-                //context.Response.Headers.Add("Content-Security-Policy", "self");
+                context.Response.Headers.Append(
+                    "Referrer-Policy",
+                    "strict-origin-when-cross-origin"
+                );
+
                 await next();
             });
-            app.UseHttpsRedirection();
+
+            // Don't use this on Render
+            // app.UseHttpsRedirection();
+
             app.UseStaticFiles();
-            app.UseCors(p => p
-                .AllowAnyMethod()
-                .AllowAnyHeader()
-                .SetIsOriginAllowed(_ => true) // allow any origin
-                .AllowCredentials()
-                .SetPreflightMaxAge(TimeSpan.FromSeconds(600))
-                .WithExposedHeaders("Content-Disposition"));
 
             app.UseRouting();
+
+            app.UseCors("Frontend");
+
             app.UseAuthentication();
+
             app.UseAuthorization();
-
-            if (!env.IsProduction())
-            {
-                app.UseHttpsRedirection();
-            }
-
 
             app.MapControllers();
         }
