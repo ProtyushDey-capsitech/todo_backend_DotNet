@@ -46,7 +46,20 @@ namespace Projects
                .RegisterMongoStores<ApplicationUser, IdentityRole>(_configuration["DbSettings:ConnectionString"]);
             services.Configure<DbSettings>(_configuration.GetSection("DbSettings"));
             services.Configure<JwtSettings>(_configuration.GetSection("JwtSettings"));
-            services.AddCors();
+            services.AddCors(options =>
+            {
+                options.AddPolicy("Frontend", policy =>
+                {
+                    policy
+                        .WithOrigins(
+                            "http://localhost:5173",
+                            "https://todo-ist-git-main-protyushdey-capsitechs-projects.vercel.app"
+                        )
+                        .AllowAnyHeader()
+                        .AllowAnyMethod()
+                        .AllowCredentials();
+                });
+            });
             AppConfig.Init(_configuration);
 
             services.AddAuthentication().AddJwtBearer(cfg =>
