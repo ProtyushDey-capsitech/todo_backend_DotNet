@@ -950,6 +950,13 @@ namespace Projects.Controllers
         {
             return Ok("API is working");
         }
+
+        [HttpPost("TestPost")]
+[AllowAnonymous]
+public IActionResult TestPost([FromBody] object model)
+{
+    return Ok(model);
+}
     }
 }
 
