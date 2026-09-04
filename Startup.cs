@@ -74,7 +74,6 @@ namespace Projects
             DbConventions.RegisterCamelCaseConvention();
 
             //services.AddSingleton<BookService>();
-            services.AddSingleton<AuthorService>();
             services.AddScoped<OtpService>();
 
             //services.AddSingleton<GenreService>();
