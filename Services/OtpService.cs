@@ -40,10 +40,10 @@ namespace Projects.Services
 
 
             // Generate OTP
-            //string otp = RandomNumberGenerator
-            //    .GetInt32(100000, 1000000)
-            //    .ToString();
-            string otp = "000000";
+            string otp = RandomNumberGenerator
+                .GetInt32(100000, 1000000)
+                .ToString();
+            //string otp = "000000";
 
 
             // Generate temporary session
