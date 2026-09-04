@@ -175,7 +175,10 @@ namespace Projects
             app.UseAuthentication();
             app.UseAuthorization();
 
-            app.UseHttpsRedirection();
+            if (!env.IsProduction())
+            {
+                app.UseHttpsRedirection();
+            }
 
 
             app.MapControllers();
