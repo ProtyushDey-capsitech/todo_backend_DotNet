@@ -12,6 +12,7 @@ using Projects.Dtos.Task;
 using Projects.Dtos.Todo;
 using Projects.Models;
 using System.Runtime.CompilerServices;
+using System.Security.Cryptography;
 
 namespace Projects.Services
 {
@@ -228,8 +229,10 @@ namespace Projects.Services
 
         public async Task<List<ProjectTaskStatusCount>> GetProjectTaskCount(string userId)
         {
+            var filter = Builders<ProjectModel>.Filter.And(
+                Builders<ProjectModel>.Filter.Eq(x => x.UserId, userId), Builders<ProjectModel>.Filter.Eq(x => x.Status, false));
             var res = await _project.Aggregate()
-                .Match(x => x.UserId == userId)
+                .Match(filter)
                 .Lookup<ProjectModel, TaskModel, ResponseProjectTaskDto>(
                 _task,
                 x => x.Id,
