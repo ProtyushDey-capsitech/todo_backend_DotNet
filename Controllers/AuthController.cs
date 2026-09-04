@@ -119,61 +119,54 @@ namespace Projects.Controllers
         /// <returns><see cref="ApiResponse{UserLogInResponse}"/></returns>
         [HttpPost("Login")]
         [AllowAnonymous]
-        // [RequireHttps]
-//         public async Task<IActionResult> Login([FromBody] UserLogInRequest model)
-{
+
         public async Task<ApiResponse<String>> Login([FromBody] UserLogInRequest model)
         {
             ApiResponse<String> response = new ApiResponse<String>();
-            try
+try
+{
+    if (ValidateModel(response))
+    {
+        ApplicationUser user = await _userManager.FindByNameAsync(model.UserName);
+        if (user != null && user.Status == ApplicationUserStatus.Active) 
+        {
+            Microsoft.AspNetCore.Identity.SignInResult result = await _signInManager.CheckPasswordSignInAsync(user, model.Password, false);
+            if (result.Succeeded)
             {
-                if (ValidateModel(response))
-                {
-                    ApplicationUser user = await _userManager.FindByNameAsync(model.UserName);
-                    if (user != null && user.Status == ApplicationUserStatus.Active) 
-                    {
-                        Microsoft.AspNetCore.Identity.SignInResult result = await _signInManager.CheckPasswordSignInAsync(user, model.Password, false);
-                        if (result.Succeeded)
-                        {
-                           string sessionId =await _otp.GenerateOtpAsync(user.Id, user.Email);
-                            response.Result = sessionId;
-                            response.Message = "now verify otp";
-                        }
-                        else
-                        {
-                            if (result.IsLockedOut)
-                                throw new AppModelException("User account is locked out");
-                            else if (result.IsNotAllowed)
-                                throw new AppModelException("User not allowed to sign-in");
-                            else
-                                throw new AppModelException("Invalid user name or password");
-                        }
-                    }
-                    else
-                    {
-                        if (user != null && user?.Status == ApplicationUserStatus.Inactive || user?.Status == ApplicationUserStatus.Deleted)
-                            throw new AppModelException("Inactive User");
+               string sessionId =await _otp.GenerateOtpAsync(user.Id, user.Email);
+                response.Result = sessionId;
+                response.Message = "now verify otp";
+            }
+            else
+            {
+                if (result.IsLockedOut)
+                    throw new AppModelException("User account is locked out");
+                else if (result.IsNotAllowed)
+                    throw new AppModelException("User not allowed to sign-in");
+                else
+                    throw new AppModelException("Invalid user name or password");
+            }
+        }
+        else
+        {
+            if (user != null && user?.Status == ApplicationUserStatus.Inactive || user?.Status == ApplicationUserStatus.Deleted)
+                throw new AppModelException("Inactive User");
 
-                        throw new AppModelException("Invalid user name or password");
-                    }
+            throw new AppModelException("Invalid user name or password");
+        }
 
-                }
-            }
-            catch (AppModelException ex)
-            {
-                response.AddError(ex);
-            }
-            catch (Exception ex)
-            {
-                _logger.LogError(ex, "Error while sign-in");
-                response.AddError(ex);
-            }
-            return response;
-    //         return Ok(new
-    // {
-    //     username = model.UserName,
-    //     passwordReceived = !string.IsNullOrEmpty(model.Password)
-    // });
+    }
+}
+catch (AppModelException ex)
+{
+    response.AddError(ex);
+}
+catch (Exception ex)
+{
+    _logger.LogError(ex, "Error while sign-in");
+    response.AddError(ex);
+}
+return response;
         }
 
         #endregion
