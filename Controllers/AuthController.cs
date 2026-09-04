@@ -179,7 +179,7 @@ namespace Projects.Controllers
         /// <returns><see cref="ApiResponse{UserLogInResponse}"/></returns>
         [HttpPost("VerifyOtp")]
         [AllowAnonymous]
-        [RequireHttps]
+        //[RequireHttps]
         public async Task<ApiResponse<UserLogInResponse>> VerifyOtp([FromBody] VerifyOtpRequest model)
         {
             ApiResponse<UserLogInResponse> response = new ApiResponse<UserLogInResponse>();
