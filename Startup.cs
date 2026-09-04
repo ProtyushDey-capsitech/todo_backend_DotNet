@@ -54,7 +54,7 @@ namespace Projects
                         .WithOrigins(
                             "http://localhost:5173",
                             "https://todo-ist-git-main-protyushdey-capsitechs-projects.vercel.app",
-                        "https://todo-ist-ten.vercel.app/",
+                        "https://todo-ist-ten.vercel.app",
                         "https://todo-cs0o97v2q-protyushdey-capsitechs-projects.vercel.app/login"
                         )
                         .AllowAnyHeader()
