@@ -942,7 +942,15 @@ namespace Projects.Controllers
             }
             return response;
         }
+#endregion
+
+        [HttpGet("Test")]
+        [AllowAnonymous]
+        public IActionResult Test()
+        {
+            return Ok("API is working");
+        }
     }
 }
 
-#endregion
+
